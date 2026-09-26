@@ -1,0 +1,107 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: postgres-vectordb
+    restart: "no"
+    environment:
+      POSTGRES_DB: logMonitor
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: love
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d logMonitor"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
+  kafka:
+    image: apache/kafka:latest
+    container_name: kafka-broker
+    restart: "no"
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+    volumes:
+      - kaFKadata:/tmp/kraft-combined-logs
+
+
+  redis:
+    image: redis:alpine
+    container_name: redis-cache
+    restart: "no"
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama-llm
+    restart: "no"
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollamadata:/root/.ollama
+    entrypoint: [ "/bin/sh", "-c", "ollama serve & sleep 5 && ollama pull mistral && ollama pull nomic-embed-text && wait" ]
+
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: log-monitor
+    restart: "no"
+    ports:
+      - "8080:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      redis:
+        condition: service_started
+    environment:
+
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/logMonitor
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: love
+
+
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+
+
+      SPRING_AI_VECTORSTORE_PGVECTOR_INITIALIZE_SCHEMA: "true"
+
+
+      SPRING_AI_OLLAMA_BASE_URL: http://ollama:11434
+      SPRING_AI_OLLAMA_CHAT_OPTIONS_MODEL: mistral
+      SPRING_AI_OLLAMA_EMBEDDING_OPTIONS_MODEL: nomic-embed-text
+
+
+volumes:
+  pgdata:
+  kaFKadata:
+  redisdata:
+  ollamadata:
