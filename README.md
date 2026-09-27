@@ -244,7 +244,7 @@ ollama-llm
 
 ---
 
-# 🤖 Ollama Configuration
+#  Ollama Configuration
 
 The application uses two Ollama models.
 
@@ -470,7 +470,7 @@ because Docker services communicate using their Compose service names.
 
 ---
 
-# 🧠 RAG Pipeline
+#  RAG Pipeline
 
 Log Watchman uses Retrieval-Augmented Generation (RAG) to provide historical context to the AI model.
 
@@ -578,7 +578,7 @@ GET /logWatchman/stream
 
 ---
 
-# 🩺 Example Use Case
+#  Example Use Case
 
 Suppose the payment service produces:
 
@@ -632,7 +632,7 @@ Log Watchman:
 
 
 
-# 🚧 Future Improvements
+#  Future Improvements
 
 Potential improvements include:
 
